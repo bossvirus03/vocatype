@@ -1,0 +1,279 @@
+/* ── Google Fonts (must be before @tailwind) ──────────── */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Base Resets ──────────────────────────────────────── */
+@layer base {
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { font-family: 'Inter', system-ui, sans-serif; }
+  body {
+    @apply bg-slate-100 text-slate-900 dark:bg-[#0f0f1a] dark:text-slate-100;
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+}
+
+/* ── Custom Typing Char Styles (MonkeyType Style) ──────── */
+@layer components {
+  .typing-area-root {
+    @apply relative w-full overflow-hidden select-none transition-all duration-300;
+  }
+
+  .typing-viewport {
+    @apply relative h-[120px] overflow-hidden w-full;
+  }
+
+  .typing-words-inner {
+    @apply flex flex-wrap gap-x-[0.55em] gap-y-3 text-2xl font-mono leading-relaxed select-none align-baseline content-start;
+    font-size: 1.65rem;
+  }
+
+  .typing-word {
+    @apply relative inline-block transition-colors duration-200 py-0.5;
+  }
+
+  .typing-char {
+    display: inline-block;
+    white-space: pre;
+  }
+
+  .typing-word-current {
+    /* Monkeytype style keeps it simple, no background highlight */
+  }
+
+  /* Ký tự đúng */
+  .char-correct {
+    @apply text-slate-800 dark:text-slate-200 transition-colors duration-100;
+  }
+
+  /* Ký tự sai */
+  .char-incorrect {
+    @apply text-red-500 border-b-2 border-red-500/40 transition-colors duration-100;
+  }
+
+  /* Dấu cách gõ sai */
+  .char-incorrect-space {
+    @apply text-red-500 bg-red-500/10 rounded-sm border-b-2 border-red-500/40;
+  }
+
+  /* Ký tự chưa gõ */
+  .char-untyped {
+    @apply text-slate-400 dark:text-slate-600 transition-colors duration-100;
+  }
+
+  /* Caret Monkeytype */
+  .typing-caret-smooth {
+    @apply absolute w-[2.5px] bg-yellow-400 dark:bg-yellow-400 rounded-full pointer-events-none;
+    transition: left 0.1s cubic-bezier(0.4, 0, 0.2, 1), top 0.15s cubic-bezier(0.4, 0, 0.2, 1), height 0.1s ease;
+    animation: caretFlash 1s ease-in-out infinite;
+    box-shadow: 0 0 8px rgba(250, 204, 21, 0.6);
+    z-index: 10;
+  }
+
+  /* Định nghĩa ở dưới cùng */
+  .typing-definition-bar {
+    @apply mt-6 min-h-[32px] flex items-center justify-center text-sm font-medium text-slate-500 dark:text-slate-400 border-t border-slate-200 dark:border-white/5 pt-4;
+  }
+
+  .typing-definition-text {
+    @apply text-violet-600 dark:text-violet-400 font-semibold tracking-wide animate-fade-in;
+  }
+
+  .typing-definition-placeholder {
+    @apply text-slate-300 dark:text-slate-700 font-mono;
+  }
+
+  /* Blur overlay */
+  .typing-blur-overlay {
+    @apply absolute inset-0 flex items-center justify-center bg-slate-100/40 dark:bg-[#0f0f1a]/40 backdrop-blur-md z-20 rounded-2xl cursor-pointer transition-all duration-300;
+  }
+
+  /* Hidden input */
+  .hidden-input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+    width: 1px;
+    height: 1px;
+  }
+
+  /* Glass card chung */
+  .glass {
+    @apply bg-white/80 dark:bg-white/5 backdrop-blur-sm border border-slate-200 dark:border-white/10 shadow-lg;
+  }
+
+  /* Scrollbar tuỳ chỉnh */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { @apply bg-transparent; }
+  ::-webkit-scrollbar-thumb { @apply bg-slate-300 dark:bg-slate-600 rounded-full; }
+}
+
+@keyframes caretFlash {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.15; }
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in { animation: fadeIn 0.3s ease; }
+
+/* ══ KEYBOARD ════════════════════════════════════════ */
+.keyboard-container {
+  @apply p-3 rounded-2xl overflow-x-auto;
+}
+.keyboard-row {
+  @apply flex gap-1 mb-1 justify-center;
+}
+
+/* Base key */
+.key-cap {
+  @apply flex flex-col items-center justify-center rounded-lg
+    text-[11px] font-mono font-medium
+    min-w-[36px] h-[36px] px-1 cursor-default select-none
+    transition-all duration-100
+    bg-slate-100 border border-slate-300
+    text-slate-600
+    shadow-sm;
+}
+.dark .key-cap {
+  background-color: rgba(255,255,255,0.08);
+  border-color: rgba(255,255,255,0.15);
+  color: rgb(203,213,225);
+}
+
+/* Key state: pressed */
+.key-cap.pressed {
+  @apply bg-violet-500 text-white border-violet-400 scale-95 shadow-none;
+}
+
+/* Key state: target (next to type) */
+.key-cap.target {
+  @apply bg-violet-600 text-white border-violet-400 shadow-lg;
+  box-shadow: 0 0 12px 3px rgba(139,92,246,0.4);
+  animation: pulseGlow 1.2s ease-in-out infinite;
+}
+
+/* Finger color classes - plain CSS for dark mode compatibility */
+.dark .f-pinky-l  { border-color: rgba(239,68,68,0.5); }
+.dark .f-ring-l   { border-color: rgba(245,158,11,0.5); }
+.dark .f-middle-l { border-color: rgba(16,185,129,0.5); }
+.dark .f-index-l  { border-color: rgba(59,130,246,0.5); }
+.dark .f-index-r  { border-color: rgba(59,130,246,0.5); }
+.dark .f-middle-r { border-color: rgba(16,185,129,0.5); }
+.dark .f-ring-r   { border-color: rgba(245,158,11,0.5); }
+.dark .f-pinky-r  { border-color: rgba(239,68,68,0.5); }
+.dark .f-thumb    { border-color: rgba(6,182,212,0.5); }
+
+/* Width variants */
+.w-backspace { width: 80px; }
+.w-tab       { width: 58px; }
+.w-backslash { width: 58px; }
+.w-caps      { width: 68px; }
+.w-enter     { width: 84px; }
+.w-lshift    { width: 96px; }
+.w-rshift    { width: 112px; }
+.w-ctrl      { width: 52px; }
+.w-alt       { width: 52px; }
+.w-space     { width: 240px; }
+
+/* Homing bar (F & J) */
+.homing-bar {
+  @apply block w-3 h-[3px] rounded-full bg-slate-400 dark:bg-slate-500 mt-0.5;
+}
+.key-label { font-size: 11px; line-height: 1; }
+
+/* ══ HANDS ═══════════════════════════════════════════ */
+.hands-container {
+  @apply rounded-2xl px-4 py-3;
+}
+.hands-wrapper {
+  @apply flex justify-center gap-8;
+}
+.hand-box {
+  @apply flex flex-col items-center gap-1;
+}
+.hand-title {
+  @apply text-xs text-slate-400 dark:text-slate-500 font-medium;
+}
+.hand-svg {
+  width: 160px;
+  height: 160px;
+  overflow: visible;
+}
+
+/* Palm & Wrist */
+.hand-palm {
+  fill: rgba(100,116,139,0.2);
+  stroke: rgba(100,116,139,0.4);
+  stroke-width: 1;
+}
+.dark .hand-palm {
+  fill: rgba(148,163,184,0.12);
+  stroke: rgba(148,163,184,0.25);
+}
+.hand-wrist {
+  fill: rgba(100,116,139,0.15);
+  stroke: rgba(100,116,139,0.3);
+  stroke-width: 1;
+}
+.dark .hand-wrist {
+  fill: rgba(148,163,184,0.1);
+  stroke: rgba(148,163,184,0.2);
+}
+
+/* Finger shapes */
+.finger-shape {
+  fill: rgba(100,116,139,0.25);
+  stroke: rgba(100,116,139,0.5);
+  stroke-width: 1.5;
+  transition: fill 0.15s, stroke 0.15s;
+}
+.dark .finger-shape {
+  fill: rgba(148,163,184,0.15);
+  stroke: rgba(148,163,184,0.35);
+}
+
+/* Active finger */
+.hand-finger-group.active .finger-shape {
+  fill: rgba(139,92,246,0.7);
+  stroke: rgba(167,139,250,1);
+  filter: drop-shadow(0 0 8px rgba(139,92,246,0.6));
+}
+.finger-glow {
+  fill: rgba(139,92,246,0.15);
+  stroke: rgba(139,92,246,0.4);
+  stroke-width: 1;
+  animation: pulseGlow 1s ease-in-out infinite;
+}
+.finger-label {
+  fill: white;
+  font-size: 9px;
+  font-weight: 600;
+  font-family: 'Inter', sans-serif;
+  pointer-events: none;
+}
+
+/* Toast slide-in animation */
+@keyframes slide-in {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+.animate-slide-in {
+  animation: slide-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}

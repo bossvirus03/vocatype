@@ -1,0 +1,51 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Word {
+  id                 Int      @id @default(autoincrement())
+  word               String
+  level              String
+  domain             String   @default("LIFE")
+  ipa                String
+  definition         String
+  example            String
+  exampleTranslation String
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([level])
+  @@index([domain])
+}
+
+model User {
+  id              Int            @id @default(autoincrement())
+  email           String         @unique
+  name            String?
+  avatar          String?
+  googleId        String         @unique
+  currentLevel    String         @default("A1") // Level mở khoá hiện tại: A1 -> C2
+  favoriteDomains String[]       @default([]) // Lĩnh vực ưa thích của user
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  progresses      UserProgress[]
+}
+
+model UserProgress {
+  id          Int       @id @default(autoincrement())
+  userId      Int
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  level       String    // A1 | A2 | B1 | B2 | C1 | C2
+  lessonNo    Int       // 1 -> 20
+  completed   Boolean   @default(false)
+  completedAt DateTime?
+  wpm         Float?
+  accuracy    Float?
+
+  @@unique([userId, level, lessonNo])
+}
