@@ -8,19 +8,26 @@ generator client {
 }
 
 model Word {
-  id                 Int      @id @default(autoincrement())
-  word               String
-  level              String
-  domain             String   @default("LIFE")
-  ipa                String
-  definition         String
-  example            String
-  exampleTranslation String
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  id                  Int      @id @default(autoincrement())
+  word                String   @unique
+  level               String   // A1 → C2
+  domain              String   @default("LIFE")
+  ipa                 String
+  definition          String
+  partOfSpeech        String?  // noun, verb, adjective, adverb, phrase...
+  synonyms            String[] @default([])   // mảng từ đồng nghĩa
+  example             String
+  exampleTranslation  String
+  additionalExamples  String[] @default([])   // nhiều ví dụ hơn
+  audioUrl            String?  // Đường dẫn audio phát âm trên Cloudflare R2
+  rank                Int      @default(999999) // Độ thông dụng: số càng nhỏ càng phổ biến
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 
   @@index([level])
   @@index([domain])
+  @@index([word])
+  @@index([rank])
 }
 
 model User {

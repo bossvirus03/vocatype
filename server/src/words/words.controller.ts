@@ -1,4 +1,4 @@
-import { Controller, Get, Query, ParseIntPipe, DefaultValuePipe, UseGuards } from '@nestjs/common';
+import { Controller, Get, Query, Param, Res, ParseIntPipe, DefaultValuePipe, UseGuards } from '@nestjs/common';
 import { WordsService } from './words.service';
 import { JwtAuthOptionalGuard } from '../auth/jwt-auth-optional.guard';
 import { CurrentUser } from '../auth/user.decorator';
@@ -44,4 +44,10 @@ export class WordsController {
   ) {
     return this.wordsService.getLessonWords(level, lessonNo, user?.userId);
   }
+
+  @Get('audio/:word')
+  async getAudio(@Param('word') word: string, @Res() res: any) {
+    return this.wordsService.streamAudio(word, res);
+  }
 }
+

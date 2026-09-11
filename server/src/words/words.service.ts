@@ -94,49 +94,55 @@ export class WordsService {
     });
   }
 
-  // Lấy ngẫu nhiên N từ để luyện tập gõ
+  // Lấy ngẫu nhiên N từ để luyện tập gõ (Luôn ưu tiên các từ thông dụng nhất của Level)
   async getRandom(level?: string, domain?: string, count: number = 10) {
     const filter: any = {};
-    if (level) {
-      filter.level = level.toUpperCase();
+    const lvl = level ? level.toUpperCase() : 'ALL';
+    if (lvl !== 'ALL') {
+      filter.level = lvl;
     }
-    if (domain) {
+    if (domain && domain.toUpperCase() !== 'ALL') {
       filter.domain = domain.toUpperCase();
     }
 
-    const words = await this.prisma.word.findMany({
-      where: filter,
-    });
-
-    if (words.length === 0) {
+    const total = await this.prisma.word.count({ where: filter });
+    if (total === 0) {
       throw new BadRequestException('Không tìm thấy từ vựng cho tiêu chí này');
     }
 
-    // Trộn ngẫu nhiên danh sách
-    const shuffled = [...words].sort(() => 0.5 - Math.random());
-    const selected = [];
-    while (selected.length < count) {
-      selected.push(...shuffled);
-    }
+    // Giới hạn pool chỉ trong nhóm từ thông dụng nhất của Level đó
+    let maxCommonRank = 300;
+    if (lvl === 'A1') maxCommonRank = 250;
+    else if (lvl === 'A2') maxCommonRank = 400;
+    else if (lvl === 'B1') maxCommonRank = 600;
+    else if (lvl === 'B2') maxCommonRank = 900;
+    else if (lvl === 'C1') maxCommonRank = 1400;
+    else if (lvl === 'C2') maxCommonRank = 2500;
+    else maxCommonRank = 300; // ALL
 
-    return selected.slice(0, count);
+    const poolSize = Math.min(total, maxCommonRank);
+    const fetchSize = Math.min(poolSize, Math.max(count * 2, 30));
+    const maxSkip = Math.max(0, poolSize - fetchSize);
+    const skip = Math.floor(Math.random() * (maxSkip + 1));
+
+    const sampleWords = await this.prisma.word.findMany({
+      where: filter,
+      skip,
+      take: fetchSize,
+      orderBy: { rank: 'asc' },
+    });
+
+    const shuffled = sampleWords.sort(() => 0.5 - Math.random());
+    return shuffled.slice(0, count);
   }
 
-  // Lấy danh sách từ vựng cho bài học cụ thể (từ 1 đến 20), ưu tiên theo lĩnh vực yêu thích của user
+  // Lấy danh sách từ vựng cho bài học cụ thể (từ 1 đến 20), sắp xếp các từ thông dụng nhất lên trước
   async getLessonWords(level: string, lessonNo: number, userId?: number) {
     if (lessonNo < 1 || lessonNo > 20) {
       throw new BadRequestException('Mã bài học phải từ 1 đến 20');
     }
 
     const filter: any = { level: level.toUpperCase() };
-    const allWords = await this.prisma.word.findMany({
-      where: filter,
-      orderBy: { word: 'asc' }, // Sắp xếp cố định để giữ bài học nhất quán
-    });
-
-    if (allWords.length === 0) {
-      throw new BadRequestException('Không tìm thấy từ vựng cho cấp độ này');
-    }
 
     let favoriteDomains: string[] = [];
     if (userId) {
@@ -144,30 +150,96 @@ export class WordsService {
         where: { id: userId },
         select: { favoriteDomains: true },
       });
-      if (user) {
+      if (user && user.favoriteDomains?.length > 0) {
         favoriteDomains = user.favoriteDomains.map(d => d.toUpperCase());
       }
     }
 
-    // Sắp xếp ưu tiên: Từ thuộc lĩnh vực ưa thích của user sẽ được xếp lên đầu
-    const prioritizedWords = [...allWords].sort((a, b) => {
-      const aIsFav = favoriteDomains.includes(a.domain.toUpperCase()) ? 1 : 0;
-      const bIsFav = favoriteDomains.includes(b.domain.toUpperCase()) ? 1 : 0;
-      return bIsFav - aIsFav; // Đưa các từ ưa thích lên trước
-    });
+    const wordsPerLesson = 15;
 
-    const totalWords = prioritizedWords.length;
-    // Chia làm 20 bài học, mỗi bài có từ 12 đến 15 từ
-    const wordsPerLesson = Math.max(12, Math.min(15, Math.ceil(totalWords / 20)));
+    // Nếu user có domain yêu thích, ưu tiên lấy từ domain yêu thích trước (theo rank thông dụng)
+    if (favoriteDomains.length > 0) {
+      const favWords = await this.prisma.word.findMany({
+        where: { ...filter, domain: { in: favoriteDomains } },
+        skip: (lessonNo - 1) * wordsPerLesson,
+        take: wordsPerLesson,
+        orderBy: [{ rank: 'asc' }, { word: 'asc' }],
+      });
 
-    let startIdx = ((lessonNo - 1) * wordsPerLesson) % totalWords;
-    let lessonWords = prioritizedWords.slice(startIdx, startIdx + wordsPerLesson);
+      if (favWords.length >= wordsPerLesson) {
+        return favWords;
+      }
 
-    if (lessonWords.length < wordsPerLesson) {
-      const needed = wordsPerLesson - lessonWords.length;
-      lessonWords = [...lessonWords, ...prioritizedWords.slice(0, needed)];
+      const remaining = wordsPerLesson - favWords.length;
+      const otherWords = await this.prisma.word.findMany({
+        where: { ...filter, domain: { notIn: favoriteDomains } },
+        skip: (lessonNo - 1) * remaining,
+        take: remaining,
+        orderBy: [{ rank: 'asc' }, { word: 'asc' }],
+      });
+
+      return [...favWords, ...otherWords];
     }
 
-    return lessonWords;
+    // Mặc định lấy bài học: Các bài học đầu (bài 1, 2, 3...) luôn là các từ thông dụng nhất của level đó
+    const totalLevelWords = await this.prisma.word.count({ where: filter });
+    if (totalLevelWords === 0) {
+      throw new BadRequestException('Không tìm thấy từ vựng cho cấp độ này');
+    }
+
+    const skip = ((lessonNo - 1) * wordsPerLesson) % Math.max(1, totalLevelWords - wordsPerLesson);
+    return this.prisma.word.findMany({
+      where: filter,
+      skip,
+      take: wordsPerLesson,
+      orderBy: [{ rank: 'asc' }, { word: 'asc' }],
+    });
+  }
+
+  // Phục vụ audio phát âm trực tiếp từ Cloudflare R2
+  async streamAudio(word: string, res: any) {
+    const cleanWord = word.toLowerCase().trim();
+    const audioKey = `audio/${cleanWord}.mp3`;
+
+    try {
+      const { getAudioStreamFromR2 } = await import('../utils/r2.js');
+      const r2Audio = await getAudioStreamFromR2(audioKey);
+
+      if (r2Audio && r2Audio.stream) {
+        res.setHeader('Content-Type', r2Audio.contentType || 'audio/mpeg');
+        if (r2Audio.contentLength) {
+          res.setHeader('Content-Length', r2Audio.contentLength);
+        }
+        res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+        return r2Audio.stream.pipe(res);
+      }
+
+      // Tự động lưu cache vào Cloudflare R2 trong nền để các lần nghe sau được phục vụ trực tiếp từ R2
+      import('../utils/r2.js').then(async ({ uploadAudioToR2 }) => {
+        try {
+          const https = await import('https');
+          const voiceUrl = `https://dict.youdao.com/dictvoice?type=2&audio=${encodeURIComponent(cleanWord)}`;
+          https.get(voiceUrl, (voiceRes) => {
+            if (voiceRes.statusCode === 200) {
+              const chunks: Buffer[] = [];
+              voiceRes.on('data', (c: Buffer) => chunks.push(c));
+              voiceRes.on('end', () => {
+                const buffer = Buffer.concat(chunks);
+                if (buffer.length > 500) {
+                  uploadAudioToR2(audioKey, buffer, 'audio/mpeg').catch(() => {});
+                }
+              });
+            }
+          });
+        } catch {}
+      });
+
+      // Chuyển hướng ngay lập tức để phát âm không bị gián đoạn
+      const fallbackUrl = `https://dict.youdao.com/dictvoice?type=2&audio=${encodeURIComponent(cleanWord)}`;
+      return res.redirect(fallbackUrl);
+    } catch {
+      return res.status(404).send('Không tìm thấy audio phát âm');
+    }
   }
 }
+

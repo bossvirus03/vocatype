@@ -26,6 +26,29 @@ class AudioManager {
     return this.isTtsEnabled;
   }
 
+  // Phát âm từ vựng: Ưu tiên file âm thanh thực từ Cloudflare R2 / Server, fallback về SpeechSynthesis
+  public playWordAudio(word: string, audioUrl?: string) {
+    if (!this.isEnabled || !this.isTtsEnabled) return;
+
+    const cleanWord = word.replace(/[^a-zA-Z'-]/g, '').toLowerCase().trim();
+    if (!cleanWord) return;
+
+    const targetUrl = audioUrl || `http://localhost:5001/api/words/audio/${encodeURIComponent(cleanWord)}`;
+
+    try {
+      const sound = new Audio(targetUrl);
+      sound.volume = this.volume;
+      const playPromise = sound.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(() => {
+          this.speakWord(word);
+        });
+      }
+    } catch {
+      this.speakWord(word);
+    }
+  }
+
   // Phát âm từ vựng tiếng Anh bằng công nghệ Text-to-Speech của trình duyệt
   public speakWord(word: string) {
     if (!this.isEnabled || !this.isTtsEnabled) return;

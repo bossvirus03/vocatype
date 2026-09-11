@@ -22,17 +22,69 @@
   }
 
   .typing-viewport {
-    @apply relative h-[120px] overflow-hidden w-full;
+    @apply relative overflow-hidden w-full transition-[height] duration-200 ease-out;
   }
 
   .typing-words-inner {
-    @apply flex flex-wrap gap-x-[0.55em] gap-y-3 text-2xl font-mono leading-relaxed select-none align-baseline content-start;
-    font-size: 1.65rem;
+    @apply flex flex-wrap font-mono leading-none select-none content-start items-start;
+    column-gap: 0px;
+    transition: font-size 0.2s ease;
   }
 
-  .typing-word {
-    @apply relative inline-block transition-colors duration-200 py-0.5;
+  /* Khối mỗi từ vựng (chữ trên, nghĩa dưới) */
+  .typing-word-item {
+    @apply relative inline-flex flex-col items-center justify-start py-0.5 px-0.5 rounded transition-all duration-150;
   }
+
+  .typing-word-item.is-current-word {
+    /* Đang gõ từ này */
+  }
+
+  .typing-word-letters {
+    @apply inline-flex items-baseline font-mono tracking-normal leading-none;
+  }
+
+  .typing-word-meaning {
+    @apply block font-sans tracking-normal leading-tight select-none mt-1 transition-colors duration-150;
+  }
+
+  /* Ký tự dấu cách giữa các từ */
+  .typing-space-char {
+    @apply inline-block font-mono leading-none select-none text-center;
+  }
+
+  /* ── Font size modifiers ── */
+  .typing-size-xs { row-gap: 0.85rem; }
+  .typing-size-xs .typing-word-letters { font-size: 1.15rem; }
+  .typing-size-xs .typing-space-char { font-size: 1.15rem; width: 0.55em; }
+  .typing-size-xs .typing-word-meaning { font-size: 10px; }
+
+  .typing-size-sm { row-gap: 1.05rem; }
+  .typing-size-sm .typing-word-letters { font-size: 1.4rem; }
+  .typing-size-sm .typing-space-char { font-size: 1.4rem; width: 0.58em; }
+  .typing-size-sm .typing-word-meaning { font-size: 11px; }
+
+  .typing-size-md { row-gap: 1.25rem; }
+  .typing-size-md .typing-word-letters { font-size: 1.75rem; }
+  .typing-size-md .typing-space-char { font-size: 1.75rem; width: 0.6em; }
+  .typing-size-md .typing-word-meaning { font-size: 12px; }
+
+  .typing-size-lg { row-gap: 1.5rem; }
+  .typing-size-lg .typing-word-letters { font-size: 2.2rem; }
+  .typing-size-lg .typing-space-char { font-size: 2.2rem; width: 0.62em; }
+  .typing-size-lg .typing-word-meaning { font-size: 13.5px; }
+
+  .typing-size-xl { row-gap: 1.8rem; }
+  .typing-size-xl .typing-word-letters { font-size: 2.75rem; }
+  .typing-size-xl .typing-space-char { font-size: 2.75rem; width: 0.65em; }
+  .typing-size-xl .typing-word-meaning { font-size: 15.5px; }
+
+  /* Khi tắt hiển thị nghĩa tiếng Việt: thu gọn khoảng cách dòng */
+  .no-meaning.typing-size-xs { row-gap: 0.45rem; }
+  .no-meaning.typing-size-sm { row-gap: 0.6rem; }
+  .no-meaning.typing-size-md { row-gap: 0.75rem; }
+  .no-meaning.typing-size-lg { row-gap: 0.95rem; }
+  .no-meaning.typing-size-xl { row-gap: 1.15rem; }
 
   .typing-char {
     display: inline-block;
@@ -40,7 +92,7 @@
   }
 
   .typing-word-current {
-    /* Monkeytype style keeps it simple, no background highlight */
+    /* Current word active */
   }
 
   /* Ký tự đúng */
@@ -101,13 +153,26 @@
 
   /* Glass card chung */
   .glass {
-    @apply bg-white/80 dark:bg-white/5 backdrop-blur-sm border border-slate-200 dark:border-white/10 shadow-lg;
+    @apply bg-white/80 dark:bg-white/5 backdrop-blur-md border border-slate-200/80 dark:border-white/10 shadow-lg;
+  }
+
+  .glass-card-elevated {
+    @apply bg-white/90 dark:bg-white/[0.04] backdrop-blur-xl border border-slate-200/80 dark:border-white/[0.08] shadow-xl transition-all duration-300;
+  }
+
+  /* Drawer Off-canvas */
+  .drawer-backdrop {
+    @apply fixed inset-0 bg-black/50 backdrop-blur-sm z-50 transition-opacity duration-300;
+  }
+
+  .drawer-panel {
+    @apply fixed top-0 right-0 h-full w-full max-w-[400px] bg-white/95 dark:bg-[#121320]/95 backdrop-blur-2xl border-l border-slate-200/80 dark:border-white/10 z-50 shadow-2xl transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] flex flex-col;
   }
 
   /* Scrollbar tuỳ chỉnh */
-  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
   ::-webkit-scrollbar-track { @apply bg-transparent; }
-  ::-webkit-scrollbar-thumb { @apply bg-slate-300 dark:bg-slate-600 rounded-full; }
+  ::-webkit-scrollbar-thumb { @apply bg-slate-300/80 dark:bg-slate-700/80 rounded-full hover:bg-violet-500/50; }
 }
 
 @keyframes caretFlash {
@@ -121,11 +186,25 @@
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(8px); }
+  from { opacity: 0; transform: translateY(6px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 
-.animate-fade-in { animation: fadeIn 0.3s ease; }
+.animate-fade-in { animation: fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1); }
+
+/* Ambient background glow */
+.ambient-glow-bg {
+  position: fixed;
+  top: 25%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 700px;
+  height: 400px;
+  background: radial-gradient(circle, rgba(139, 92, 246, 0.08) 0%, rgba(99, 102, 241, 0.04) 50%, transparent 80%);
+  pointer-events: none;
+  z-index: 0;
+  filter: blur(80px);
+}
 
 /* ══ KEYBOARD ════════════════════════════════════════ */
 .keyboard-container {

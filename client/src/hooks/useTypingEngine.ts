@@ -4,6 +4,8 @@ import { audio } from '../utils/audio';
 interface UseTypingEngineProps {
   wordsList: string[];
   lessonLength: number;
+  infinite?: boolean;
+  onLoadMoreWords?: () => Promise<string[]>;
 }
 
 // Hàm hỗ trợ loại bỏ dấu tiếng Việt để tránh xung đột với bộ gõ Telex/VNI khi gõ tiếng Anh
@@ -25,7 +27,12 @@ const removeVietnameseTones = (str: string): string => {
     .replace(/Đ/g, 'D');
 };
 
-export const useTypingEngine = ({ wordsList, lessonLength, infinite = false }: UseTypingEngineProps) => {
+export const useTypingEngine = ({
+  wordsList,
+  lessonLength,
+  infinite = false,
+  onLoadMoreWords,
+}: UseTypingEngineProps) => {
   const [currentWords, setCurrentWords] = useState<string[]>([]);
   const [text, setText] = useState<string>(''); // Chuỗi văn bản đích đầy đủ
   const [typedText, setTypedText] = useState<string>(''); // Chuỗi người dùng đã gõ
@@ -42,6 +49,7 @@ export const useTypingEngine = ({ wordsList, lessonLength, infinite = false }: U
   // Lưu trữ độ dài trước đó để phát hiện gõ thêm hay xoá đi (Backspace)
   const prevTypedLength = useRef<number>(0);
   const inputRef = useRef<HTMLInputElement>(null);
+  const isLoadingMoreRef = useRef<boolean>(false);
 
   // Tạo một bài luyện tập mới
   const initLesson = useCallback(() => {
@@ -158,15 +166,30 @@ export const useTypingEngine = ({ wordsList, lessonLength, infinite = false }: U
     if (infinite) {
       const currentWordIndex = normalizedValue ? normalizedValue.split(' ').length - 1 : 0;
       if (currentWordIndex >= currentWords.length - 8) {
-        // Lấy thêm 20 từ ngẫu nhiên nối vào đuôi
-        const newWords: string[] = [];
-        const shuffled = [...wordsList].sort(() => 0.5 - Math.random());
-        while (newWords.length < 20) {
-          newWords.push(...shuffled);
+        if (onLoadMoreWords && !isLoadingMoreRef.current) {
+          isLoadingMoreRef.current = true;
+          onLoadMoreWords()
+            .then((loadedWords) => {
+              if (loadedWords && loadedWords.length > 0) {
+                setCurrentWords((prev) => [...prev, ...loadedWords]);
+                setText((prev) => prev + ' ' + loadedWords.join(' '));
+              }
+            })
+            .catch(() => {})
+            .finally(() => {
+              isLoadingMoreRef.current = false;
+            });
+        } else if (!onLoadMoreWords) {
+          // Fallback nếu không có API callback
+          const newWords: string[] = [];
+          const shuffled = [...wordsList].sort(() => 0.5 - Math.random());
+          while (newWords.length < 20) {
+            newWords.push(...shuffled);
+          }
+          const appended = newWords.slice(0, 20);
+          setCurrentWords(prev => [...prev, ...appended]);
+          setText(prev => prev + ' ' + appended.join(' '));
         }
-        const appended = newWords.slice(0, 20);
-        setCurrentWords(prev => [...prev, ...appended]);
-        setText(prev => prev + ' ' + appended.join(' '));
       }
     } else {
       // Kiểm tra xem đã hoàn thành toàn bộ văn bản chưa

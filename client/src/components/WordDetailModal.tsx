@@ -8,6 +8,7 @@ interface WordMetadata {
   ipa?: string;
   example?: string;
   exampleTranslation?: string;
+  audioUrl?: string;
 }
 
 interface WordDetailModalProps {
@@ -97,7 +98,7 @@ export const WordDetailModal: React.FC<WordDetailModalProps> = ({
   const { pos, synonyms } = getWordDetail(word, definition);
 
   const handleSpeak = () => {
-    audio.speakWord(word);
+    audio.playWordAudio(word, wordData?.audioUrl);
   };
 
   return (

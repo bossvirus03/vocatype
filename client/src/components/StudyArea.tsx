@@ -10,6 +10,7 @@ import Stats from './Stats';
 interface WordItem {
   id: number; word: string; level: string; ipa: string;
   definition: string; example: string; exampleTranslation: string;
+  audioUrl?: string;
 }
 
 interface ProgressItem {
@@ -22,16 +23,12 @@ interface ProgressItem {
 
 interface StudyAreaProps {
   selectedLevel: string;
-  selectedDomain: string;
   levels: any[];
-  domains: any[];
 }
 
 export const StudyArea: React.FC<StudyAreaProps> = ({
   selectedLevel: initialLevel,
-  selectedDomain,
   levels,
-  domains
 }) => {
   const { user, token, saveLessonProgress, isAuthenticated } = useAuth();
   
@@ -99,7 +96,14 @@ export const StudyArea: React.FC<StudyAreaProps> = ({
   }, [selectedLessonNo, activeViewLevel, token]);
 
   const wordStrings = useMemo(() => words.length > 0 ? words.map(w => w.word) : ['vocabulary'], [words]);
-  const wordsMetadata = useMemo(() => words.map(w => ({ word: w.word, definition: w.definition })), [words]);
+  const wordsMetadata = useMemo(() => words.map(w => ({
+    word: w.word,
+    definition: w.definition,
+    ipa: w.ipa,
+    example: w.example,
+    exampleTranslation: w.exampleTranslation,
+    audioUrl: w.audioUrl
+  })), [words]);
 
   // Khởi động Typing Engine cho bài học
   const { text, typedText, isFinished, inputRef, nextChar, activeKeys, reset, handleInputChange, stats } =

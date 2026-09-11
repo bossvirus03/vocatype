@@ -37,6 +37,9 @@ let WordsController = class WordsController {
     async getLesson(level, lessonNo, user) {
         return this.wordsService.getLessonWords(level, lessonNo, user?.userId);
     }
+    async getAudio(word, res) {
+        return this.wordsService.streamAudio(word, res);
+    }
 };
 exports.WordsController = WordsController;
 __decorate([
@@ -79,6 +82,14 @@ __decorate([
     __metadata("design:paramtypes", [String, Number, Object]),
     __metadata("design:returntype", Promise)
 ], WordsController.prototype, "getLesson", null);
+__decorate([
+    (0, common_1.Get)('audio/:word'),
+    __param(0, (0, common_1.Param)('word')),
+    __param(1, (0, common_1.Res)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", Promise)
+], WordsController.prototype, "getAudio", null);
 exports.WordsController = WordsController = __decorate([
     (0, common_1.Controller)('words'),
     __metadata("design:paramtypes", [words_service_1.WordsService])

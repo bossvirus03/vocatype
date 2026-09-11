@@ -1,21 +1,19 @@
-import React from 'react';
-import { Volume2, VolumeX, RefreshCw, Settings, Info, Edit2 } from 'lucide-react';
+import React, { useEffect } from 'react';
+import { Volume2, VolumeX, RefreshCw, Settings, Info, Type, Rows, Languages, X } from 'lucide-react';
 import type { SwitchType } from '../utils/audio';
-import { DOMAIN_ICONS } from '../utils/domainIcons';
+import type { FontSize, LineCount } from './TypingArea';
 
 interface LevelInfo { id: string; name: string; desc: string; wordCount: number; }
-interface DomainInfo { id: string; name: string; desc: string; wordCount: number; }
 
 interface SidebarProps {
+  isOpen?: boolean;
+  onClose?: () => void;
   activeTab: 'study' | 'type';
   soundEnabled: boolean;
   onSoundToggle: (enabled: boolean) => void;
   selectedLevel: string;
   onLevelChange: (level: string) => void;
-  selectedDomain: string;
-  onDomainChange: (domain: string) => void;
   levels: LevelInfo[];
-  domains: DomainInfo[];
   onReset: () => void;
   
   // Cài đặt âm thanh cơ học
@@ -24,43 +22,171 @@ interface SidebarProps {
   volume: number;
   onVolumeChange: (vol: number) => void;
 
-  // Lĩnh vực yêu thích và callback mở Modal sửa
-  favoriteDomains: string[];
-  onEditDomains: () => void;
-
   // Cấu hình phát âm (TTS)
   ttsEnabled: boolean;
   onTtsToggle: (enabled: boolean) => void;
+
+  // Cài đặt hiển thị số dòng, cỡ chữ & nghĩa từ vựng
+  fontSize?: FontSize;
+  onFontSizeChange?: (size: FontSize) => void;
+  lineCount?: LineCount;
+  onLineCountChange?: (count: LineCount) => void;
+  showMeaning?: boolean;
+  onShowMeaningToggle?: (enabled: boolean) => void;
 }
 
-
-
 const SectionTitle: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <h4 className="text-[11px] font-semibold uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-2">
+  <h4 className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-400 mb-2.5 flex items-center gap-1.5">
     {children}
   </h4>
 );
 
 export const Sidebar: React.FC<SidebarProps> = ({
+  isOpen = false,
+  onClose,
   activeTab, soundEnabled, onSoundToggle,
-  selectedLevel, onLevelChange, selectedDomain, onDomainChange,
-  levels, domains, onReset,
+  selectedLevel, onLevelChange,
+  levels, onReset,
   switchType, onSwitchTypeChange, volume, onVolumeChange,
-  favoriteDomains, onEditDomains,
-  ttsEnabled, onTtsToggle
+  ttsEnabled, onTtsToggle,
+  fontSize = 'sm', onFontSizeChange,
+  lineCount = 3, onLineCountChange,
+  showMeaning = true, onShowMeaningToggle
 }) => {
-  // Lọc chỉ hiển thị các lĩnh vực yêu thích của user
-  const displayedDomains = domains.filter(d => favoriteDomains.includes(d.id));
+
+  // Đóng bằng phím ESC khi drawer đang mở
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) {
+        onClose?.();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
 
   return (
-    <aside className="w-64 shrink-0 glass rounded-2xl p-4 flex flex-col gap-4 self-start sticky top-20 max-h-[calc(100vh-6rem)] overflow-y-auto">
+    <>
+      {/* ── Lớp nền mờ Backdrop ── */}
+      <div
+        className={`drawer-backdrop ${
+          isOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+        }`}
+        onClick={onClose}
+      />
 
-      {/* Header Sidebar */}
-      <div className="flex items-center gap-2 pb-2 border-b border-slate-200 dark:border-white/10">
-        <Settings size={16} className="text-violet-500" />
-        <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">
-          Cài đặt Luyện gõ
-        </h3>
+      {/* ── Slide-over Drawer Panel ── */}
+      <aside
+        className={`drawer-panel ${
+          isOpen ? 'translate-x-0' : 'translate-x-full'
+        }`}
+      >
+        {/* Header Drawer */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200/80 dark:border-white/10 shrink-0">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-violet-600/10 dark:bg-violet-500/20 text-violet-600 dark:text-violet-400 flex items-center justify-center">
+              <Settings size={17} className="animate-spin-slow" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100 leading-tight">
+                Cài đặt trải nghiệm
+              </h3>
+              <p className="text-[10px] text-slate-400 dark:text-slate-500">
+                Giao diện, âm thanh, cấp độ & từ điển
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-xl flex items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/10 transition-all"
+            title="Đóng cài đặt (ESC)"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* Nội dung các tuỳ chỉnh */}
+        <div className="flex-1 overflow-y-auto px-6 py-5 flex flex-col gap-6">
+
+      {/* ── Cài đặt Hiển thị (Số dòng, Cỡ chữ & Nghĩa) ── */}
+      <div>
+        <SectionTitle>Giao diện gõ</SectionTitle>
+        <div className="flex flex-col gap-3">
+          {/* Toggle Hiển thị nghĩa từ vựng */}
+          <div className="flex items-center justify-between py-2 px-3 rounded-xl bg-slate-100/80 dark:bg-white/5 border border-slate-200/60 dark:border-white/5 transition-all">
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 rounded-lg bg-violet-500/10 dark:bg-violet-400/20 text-violet-600 dark:text-violet-400 flex items-center justify-center">
+                <Languages size={13} />
+              </div>
+              <div>
+                <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 block leading-tight">
+                  Nghĩa từ vựng
+                </span>
+                <span className="text-[9px] text-slate-400 dark:text-slate-500">
+                  Hiển thị nghĩa tiếng Việt dưới từ
+                </span>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => onShowMeaningToggle?.(!showMeaning)}
+              className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                showMeaning ? 'bg-violet-600' : 'bg-slate-300 dark:bg-slate-700'
+              }`}
+              title={showMeaning ? 'Đang bật nghĩa từ' : 'Đang tắt nghĩa từ'}
+            >
+              <span
+                className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                  showMeaning ? 'translate-x-4' : 'translate-x-0'
+                }`}
+              />
+            </button>
+          </div>
+
+          {/* Số dòng */}
+          <div>
+            <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium flex items-center gap-1 mb-1">
+              <Rows size={11} className="text-violet-500" /> Số dòng hiển thị
+            </span>
+            <div className="grid grid-cols-3 gap-1">
+              {([1, 2, 3] as LineCount[]).map((count) => (
+                <button
+                  key={count}
+                  onClick={() => onLineCountChange?.(count)}
+                  className={`py-1 rounded-lg text-xs font-semibold transition-all ${
+                    lineCount === count
+                      ? 'bg-violet-600 text-white shadow-sm'
+                      : 'bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-slate-300 hover:bg-violet-100 dark:hover:bg-violet-500/10'
+                  }`}
+                >
+                  {count} dòng
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Cỡ chữ */}
+          <div>
+            <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium flex items-center gap-1 mb-1">
+              <Type size={11} className="text-violet-500" /> Cỡ chữ
+            </span>
+            <div className="grid grid-cols-4 gap-1">
+              {(['xs', 'sm', 'lg', 'xl'] as FontSize[]).map((sz) => (
+                <button
+                  key={sz}
+                  onClick={() => onFontSizeChange?.(sz)}
+                  className={`py-1 rounded-lg text-xs font-semibold uppercase transition-all ${
+                    fontSize === sz
+                      ? 'bg-violet-600 text-white shadow-sm'
+                      : 'bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-slate-300 hover:bg-violet-100 dark:hover:bg-violet-500/10'
+                  }`}
+                >
+                  {sz}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* ── Switch bàn phím ── */}
@@ -136,51 +262,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
       </div>
 
-      {/* ── Lĩnh vực yêu thích (Lọc & Sửa) ── */}
-      <div>
-        <div className="flex items-center justify-between mb-2">
-          <SectionTitle>Lĩnh vực</SectionTitle>
-          <button
-            onClick={onEditDomains}
-            className="text-[10px] text-violet-500 hover:text-violet-600 font-semibold flex items-center gap-0.5"
-          >
-            <Edit2 size={10} /> Chỉnh sửa
-          </button>
-        </div>
-        
-        <div className="flex flex-col gap-1 max-h-[160px] overflow-y-auto pr-1">
-          <button
-            onClick={() => onDomainChange('ALL')}
-            className={`flex items-center justify-between px-3 py-1.5 rounded-lg text-xs transition-all
-              ${selectedDomain === 'ALL'
-                ? 'bg-violet-600/20 text-violet-500 dark:text-violet-400 border border-violet-500/30'
-                : 'bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-slate-300 hover:bg-violet-100 dark:hover:bg-violet-500/10 border border-transparent'
-              }`}
-          >
-            <span className="font-medium">Tất cả lĩnh vực</span>
-          </button>
-          {Array.isArray(displayedDomains) && displayedDomains.map(domain => (
-            <button
-              key={domain.id}
-              onClick={() => onDomainChange(domain.id)}
-              className={`flex items-center justify-between px-3 py-1.5 rounded-lg text-xs transition-all
-                ${selectedDomain === domain.id
-                  ? 'bg-violet-600/20 text-violet-500 dark:text-violet-400 border border-violet-500/30'
-                  : 'bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-slate-300 hover:bg-violet-100 dark:hover:bg-violet-500/10 border border-transparent'
-                }`}
-            >
-              <span className="font-medium truncate max-w-[130px] flex items-center gap-1.5">
-                {(() => {
-                  const Icon = DOMAIN_ICONS[domain.id];
-                  return Icon ? <Icon size={14} className="shrink-0 text-violet-500 dark:text-violet-400" /> : null;
-                })()}
-                <span className="truncate">{domain.name}</span>
-              </span>
-              <span className="text-[10px] opacity-60 shrink-0">{domain.wordCount}</span>
-            </button>
-          ))}
-        </div>
-      </div>
+
 
       {/* ── Cài đặt khác ── */}
       <div>
@@ -221,15 +303,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
       </div>
 
-      {/* ── Mẹo ── */}
-      <div className="flex items-start gap-2 p-2.5 rounded-lg bg-violet-500/10 border border-violet-500/20 mt-auto">
-        <Info size={13} className="text-violet-400 shrink-0 mt-0.5" />
-        <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
-          Chế độ luyện gõ tự do là <strong>Vô tận (Infinite)</strong>. Nhấp nút <strong>Dừng gõ</strong> trên màn hình gõ để xem kết quả chi tiết.
-        </p>
+        {/* ── Mẹo ── */}
+        <div className="flex items-start gap-2 p-3 rounded-2xl bg-violet-500/10 border border-violet-500/20 mt-auto">
+          <Info size={14} className="text-violet-400 shrink-0 mt-0.5" />
+          <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+            Chế độ luyện gõ là <strong>Vô tận (Infinite)</strong>. Nhấn <strong className="text-violet-400">Dừng gõ</strong> trên màn hình để xem kết quả WPM chi tiết.
+          </p>
+        </div>
       </div>
     </aside>
-  );
+  </>
+);
 };
 
 export default Sidebar;

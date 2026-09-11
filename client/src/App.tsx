@@ -1,50 +1,79 @@
-import { useState, useEffect, useCallback } from 'react';
-import { useTypingEngine } from './hooks/useTypingEngine';
-import { lessons, englishVietnameseDict } from './utils/wordList';
-import Header from './components/Header';
-import TypingArea from './components/TypingArea';
-import Keyboard from './components/Keyboard';
-import Hands from './components/Hands';
-import Stats from './components/Stats';
-import StudyArea from './components/StudyArea';
-import Sidebar from './components/Sidebar';
-import { ThemeProvider } from './contexts/ThemeContext';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
-import { ToastProvider } from './contexts/ToastContext';
-import { Onboarding } from './components/Onboarding';
-import { GoogleOAuthProvider } from '@react-oauth/google';
-import { Info, HelpCircle, Lock, Trophy } from 'lucide-react';
-import { audio } from './utils/audio';
-import type { SwitchType } from './utils/audio';
-import { EditDomainsModal } from './components/EditDomainsModal';
-import { WordDetailModal } from './components/WordDetailModal';
+import { useState, useEffect, useCallback } from "react";
+import { useTypingEngine } from "./hooks/useTypingEngine";
+import { lessons, englishVietnameseDict } from "./utils/wordList";
+import Header from "./components/Header";
+import TypingArea from "./components/TypingArea";
+import type { FontSize, LineCount } from "./components/TypingArea";
+import Keyboard from "./components/Keyboard";
+import Hands from "./components/Hands";
+import Stats from "./components/Stats";
+import StudyArea from "./components/StudyArea";
+import Sidebar from "./components/Sidebar";
+import { ThemeProvider } from "./contexts/ThemeContext";
+import { AuthProvider, useAuth } from "./contexts/AuthContext";
+import { ToastProvider } from "./contexts/ToastContext";
+import { Onboarding } from "./components/Onboarding";
+import { GoogleOAuthProvider } from "@react-oauth/google";
+import { Info, HelpCircle, Lock, Trophy } from "lucide-react";
+import { audio } from "./utils/audio";
+import type { SwitchType } from "./utils/audio";
+import { WordDetailModal } from "./components/WordDetailModal";
 
 // Đọc Google Client ID từ biến môi trường của Vite (.env)
-const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '103859385938-exampleid.apps.googleusercontent.com';
+const GOOGLE_CLIENT_ID =
+  import.meta.env.VITE_GOOGLE_CLIENT_ID ||
+  "103859385938-exampleid.apps.googleusercontent.com";
 
 function AppContent() {
-  const [activeTab, setActiveTab] = useState<'study' | 'type'>('study');
-  const [currentLessonId, setCurrentLessonId] = useState<string>('home-row-basic');
-  const [lessonLength, setLessonLength] = useState<number>(20);
-  const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
-  const [switchType, setSwitchType] = useState<SwitchType>('blue');
-  const [volume, setVolume] = useState<number>(0.5);
-  const [ttsEnabled, setTtsEnabled] = useState<boolean>(() => audio.getTtsEnabled());
+  const [activeTab, setActiveTab] = useState<"study" | "type">("study");
+  const [currentLessonId, setCurrentLessonId] =
+    useState<string>("home-row-basic");
 
-  // States cho việc chỉnh sửa lĩnh vực yêu thích
-  const [isEditModalOpen, setIsEditModalOpen] = useState<boolean>(false);
-  const [guestFavorites, setGuestFavorites] = useState<string[]>(() => {
-    const saved = localStorage.getItem('vocatype-guest-favorites');
-    return saved ? JSON.parse(saved) : ['LIFE', 'COMMUNICATION', 'BUSINESS', 'MEDICINE', 'TECHNOLOGY'];
+  // Cài đặt hiển thị giao diện gõ (số dòng và cỡ chữ)
+  const [fontSize, setFontSize] = useState<FontSize>(() => {
+    return (localStorage.getItem("vocatype_font_size") as FontSize) || "sm";
+  });
+  const [lineCount, setLineCount] = useState<LineCount>(() => {
+    const saved = localStorage.getItem("vocatype_line_count");
+    return saved ? (parseInt(saved, 10) as LineCount) : 3;
   });
 
-  const [practiceMode, setPracticeMode] = useState<'rows' | 'words'>('words');
-  const [selectedLevel, setSelectedLevel] = useState<string>('A1');
-  const [selectedDomain, setSelectedDomain] = useState<string>('LIFE');
-  const [levels, setLevels] = useState<any[]>([]);
-  const [domains, setDomains] = useState<any[]>([]);
+  const handleFontSizeChange = (sz: FontSize) => {
+    setFontSize(sz);
+    localStorage.setItem("vocatype_font_size", sz);
+  };
 
-  const [practiceWords, setPracticeWords] = useState<string[]>(['hello', 'world']);
+  const handleLineCountChange = (lines: LineCount) => {
+    setLineCount(lines);
+    localStorage.setItem("vocatype_line_count", lines.toString());
+  };
+
+  // Cài đặt hiển thị nghĩa từ vựng
+  const [showMeaning, setShowMeaning] = useState<boolean>(() => {
+    const saved = localStorage.getItem("vocatype_show_meaning");
+    return saved !== null ? saved === "true" : true;
+  });
+
+  const handleShowMeaningToggle = (enabled: boolean) => {
+    setShowMeaning(enabled);
+    localStorage.setItem("vocatype_show_meaning", String(enabled));
+  };
+  const [lessonLength, setLessonLength] = useState<number>(20);
+  const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
+  const [switchType, setSwitchType] = useState<SwitchType>("blue");
+  const [volume, setVolume] = useState<number>(0.5);
+  const [ttsEnabled, setTtsEnabled] = useState<boolean>(() =>
+    audio.getTtsEnabled(),
+  );
+
+  const [practiceMode, setPracticeMode] = useState<"rows" | "words">("words");
+  const [selectedLevel, setSelectedLevel] = useState<string>("A1");
+  const [levels, setLevels] = useState<any[]>([]);
+
+  const [practiceWords, setPracticeWords] = useState<string[]>([
+    "hello",
+    "world",
+  ]);
   const [practiceWordsMetadata, setPracticeWordsMetadata] = useState<any[]>([]);
   const [isLoadingWords, setIsLoadingWords] = useState<boolean>(false);
 
@@ -52,59 +81,53 @@ function AppContent() {
   const [selectedWordData, setSelectedWordData] = useState<any | null>(null);
   const [isWordDetailOpen, setIsWordDetailOpen] = useState<boolean>(false);
 
-  const handleWordClick = useCallback((clickedWord: string, index: number) => {
-    if (!clickedWord) return;
-    
-    // Tìm kiếm trong metadata trước
-    let found = practiceWordsMetadata.find(
-      m => m && m.word && m.word.toLowerCase() === clickedWord.toLowerCase()
-    );
-    
-    if (!found) {
-      // Tìm trong từ điển local fallback
-      const cleanWord = clickedWord.toLowerCase().replace(/[^a-z]/g, '');
-      const dictMeanings = englishVietnameseDict[cleanWord];
-      found = {
-        word: clickedWord,
-        definition: dictMeanings || 'Hàng phím hoặc ký tự luyện tập.',
-        ipa: '',
-        example: '',
-        exampleTranslation: ''
-      };
-    }
-    
-    setSelectedWordData(found);
-    setIsWordDetailOpen(true);
-  }, [practiceWordsMetadata]);
+  const handleWordClick = useCallback(
+    (clickedWord: string, index: number) => {
+      if (!clickedWord) return;
+
+      // Tìm kiếm trong metadata trước
+      let found = practiceWordsMetadata.find(
+        (m) =>
+          m && m.word && m.word.toLowerCase() === clickedWord.toLowerCase(),
+      );
+
+      if (!found) {
+        // Tìm trong từ điển local fallback
+        const cleanWord = clickedWord.toLowerCase().replace(/[^a-z]/g, "");
+        const dictMeanings = englishVietnameseDict[cleanWord];
+        found = {
+          word: clickedWord,
+          definition: dictMeanings || "Hàng phím hoặc ký tự luyện tập.",
+          ipa: "",
+          example: "",
+          exampleTranslation: "",
+        };
+      }
+
+      setSelectedWordData(found);
+      setIsWordDetailOpen(true);
+    },
+    [practiceWordsMetadata],
+  );
 
   // States từ AuthContext
-  const { user, isAuthenticated, isLoading: authLoading, refreshProfile, updateFavoriteDomains } = useAuth();
-  const [onboardingCompleted, setOnboardingCompleted] = useState<boolean>(false);
+  const {
+    user,
+    isAuthenticated,
+    isLoading: authLoading,
+    refreshProfile,
+  } = useAuth();
+  const [onboardingCompleted, setOnboardingCompleted] =
+    useState<boolean>(false);
 
-  // Lĩnh vực yêu thích (đồng bộ cho cả guest và user)
-  const favoriteDomains = isAuthenticated && user ? user.favoriteDomains : guestFavorites;
-
-  const handleSaveDomains = async (newDomains: string[]) => {
-    if (isAuthenticated) {
-      await updateFavoriteDomains(newDomains);
-    } else {
-      localStorage.setItem('vocatype-guest-favorites', JSON.stringify(newDomains));
-      setGuestFavorites(newDomains);
-    }
-  };
-
-  const activeLesson = lessons.find(l => l.id === currentLessonId) || lessons[0];
+  const activeLesson =
+    lessons.find((l) => l.id === currentLessonId) || lessons[0];
 
   useEffect(() => {
-    fetch('http://localhost:5001/api/words/levels')
-      .then(r => r.ok ? r.json() : [])
-      .then(data => Array.isArray(data) ? setLevels(data) : setLevels([]))
+    fetch("http://localhost:5001/api/words/levels")
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data) => (Array.isArray(data) ? setLevels(data) : setLevels([])))
       .catch(() => setLevels([]));
-
-    fetch('http://localhost:5001/api/words/domains')
-      .then(r => r.ok ? r.json() : [])
-      .then(data => Array.isArray(data) ? setDomains(data) : setDomains([]))
-      .catch(() => setDomains([]));
   }, []);
 
   // Đồng bộ cài đặt âm thanh với AudioManager
@@ -115,60 +138,109 @@ function AppContent() {
     audio.setTtsEnabled(ttsEnabled);
   }, [soundEnabled, switchType, volume, ttsEnabled]);
 
-  const fetchWordsFromAPI = useCallback((level?: string, domain?: string, count: number = 20) => {
-    setIsLoadingWords(true);
-    const params = new URLSearchParams();
-    if (level && level !== 'ALL') params.append('level', level);
-    if (domain && domain !== 'ALL') params.append('domain', domain);
-    params.append('count', count.toString());
+  const fetchWordsFromAPI = useCallback(
+    (level?: string, count: number = 20) => {
+      setIsLoadingWords(true);
+      const params = new URLSearchParams();
+      if (level && level !== "ALL") params.append("level", level);
+      params.append("count", count.toString());
 
-    fetch(`http://localhost:5001/api/words/random?${params.toString()}`)
-      .then(res => { if (!res.ok) throw new Error('Thất bại'); return res.json(); })
-      .then((data: any[]) => {
-        const wordsArray = data.map(item => item.word);
-        const metadataArray = data.map(item => ({
-          word: item.word,
-          definition: item.definition,
-          ipa: item.ipa,
-          example: item.example,
-          exampleTranslation: item.exampleTranslation
-        }));
-        if (wordsArray.length > 0) {
-          setPracticeWords(wordsArray);
-          setPracticeWordsMetadata(metadataArray);
-        } else {
-          setPracticeWords(['no_words_found']);
+      fetch(`http://localhost:5001/api/words/random?${params.toString()}`)
+        .then((res) => {
+          if (!res.ok) throw new Error("Thất bại");
+          return res.json();
+        })
+        .then((data: any[]) => {
+          const wordsArray = data.map((item) => item.word);
+          const metadataArray = data.map((item) => ({
+            word: item.word,
+            definition: item.definition,
+            ipa: item.ipa,
+            example: item.example,
+            exampleTranslation: item.exampleTranslation,
+            audioUrl: item.audioUrl,
+          }));
+          if (wordsArray.length > 0) {
+            setPracticeWords(wordsArray);
+            setPracticeWordsMetadata(metadataArray);
+          } else {
+            setPracticeWords(["no_words_found"]);
+            setPracticeWordsMetadata([]);
+          }
+          setIsLoadingWords(false);
+        })
+        .catch(() => {
+          setPracticeWords(activeLesson.words);
           setPracticeWordsMetadata([]);
-        }
-        setIsLoadingWords(false);
-      })
-      .catch(() => {
-        setPracticeWords(activeLesson.words);
-        setPracticeWordsMetadata([]);
-        setIsLoadingWords(false);
-      });
-  }, [activeLesson.words]);
+          setIsLoadingWords(false);
+        });
+    },
+    [activeLesson.words],
+  );
+
+  const handleLoadMoreWords = useCallback(async (): Promise<string[]> => {
+    try {
+      const params = new URLSearchParams();
+      if (selectedLevel && selectedLevel !== "ALL") params.append("level", selectedLevel);
+      params.append("count", "30");
+
+      const res = await fetch(`http://localhost:5001/api/words/random?${params.toString()}`);
+      if (!res.ok) throw new Error("Lỗi tải từ mới");
+      const data: any[] = await res.json();
+      const newWords = data.map((item) => item.word);
+      const newMetadata = data.map((item) => ({
+        word: item.word,
+        definition: item.definition,
+        ipa: item.ipa,
+        example: item.example,
+        exampleTranslation: item.exampleTranslation,
+        audioUrl: item.audioUrl,
+      }));
+      setPracticeWordsMetadata((prev) => [...prev, ...newMetadata]);
+      return newWords;
+    } catch (err) {
+      return [];
+    }
+  }, [selectedLevel]);
 
   useEffect(() => {
-    if (practiceMode === 'rows') {
+    if (practiceMode === "rows") {
       setPracticeWords(activeLesson.words);
       setPracticeWordsMetadata([]);
     } else {
-      fetchWordsFromAPI(selectedLevel, selectedDomain, lessonLength);
+      fetchWordsFromAPI(selectedLevel, 30);
     }
-  }, [practiceMode, selectedLevel, selectedDomain, lessonLength, activeLesson.words, fetchWordsFromAPI]);
+  }, [
+    practiceMode,
+    selectedLevel,
+    activeLesson.words,
+    fetchWordsFromAPI,
+  ]);
 
-  const { text, typedText, isFinished, inputRef, nextChar, activeKeys, reset, handleInputChange, stats, forceFinish } =
-    useTypingEngine({
-      wordsList: practiceWords,
-      lessonLength: practiceMode === 'rows' ? practiceWords.length : lessonLength,
-      infinite: activeTab === 'type'
-    });
+  const {
+    text,
+    typedText,
+    isFinished,
+    inputRef,
+    nextChar,
+    activeKeys,
+    reset,
+    handleInputChange,
+    stats,
+    forceFinish,
+  } = useTypingEngine({
+    wordsList: practiceWords,
+    lessonLength: practiceMode === "rows" ? practiceWords.length : 30,
+    infinite: activeTab === "type",
+    onLoadMoreWords: handleLoadMoreWords,
+  });
 
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => { if (e.key === 'Escape' && activeTab === 'type') reset(); };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && activeTab === "type") reset();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, [reset, activeTab]);
 
   const handleSwitchTypeChange = useCallback((type: SwitchType) => {
@@ -180,35 +252,61 @@ function AppContent() {
     }, 30);
   }, []);
 
-  const handleLessonChange = (lessonId: string) => { setCurrentLessonId(lessonId); reset(); };
-  const handleLengthChange = (length: number) => { setLessonLength(length); reset(); };
-  const handlePracticeModeChange = useCallback((mode: 'rows' | 'words') => {
-    setPracticeMode(mode);
-    if (mode === 'rows' && activeTab === 'study') setActiveTab('type');
-    setTimeout(() => reset(), 50);
-  }, [activeTab, reset]);
+  const handleLessonChange = (lessonId: string) => {
+    setCurrentLessonId(lessonId);
+    reset();
+  };
+  const handleLengthChange = (length: number) => {
+    setLessonLength(length);
+    reset();
+  };
+  const handlePracticeModeChange = useCallback(
+    (mode: "rows" | "words") => {
+      setPracticeMode(mode);
+      if (mode === "rows" && activeTab === "study") setActiveTab("type");
+      setTimeout(() => reset(), 50);
+    },
+    [activeTab, reset],
+  );
 
   // Kiểm tra xem User có cần làm Onboarding (chọn domains & test trình độ) không
-  const needsOnboarding = isAuthenticated && user && user.favoriteDomains.length === 0 && !onboardingCompleted;
+  const needsOnboarding =
+    isAuthenticated &&
+    user &&
+    user.favoriteDomains.length === 0 &&
+    !onboardingCompleted;
 
   // Kiểm tra xem Tab Luyện gõ tự do (Học tập tự do) đã được mở khóa chưa
   // Mở khóa khi người dùng đạt trình độ C1 hoặc C2 (đã hoàn thành đủ level A1, A2, B1, B2)
-  const isFreePracticeUnlocked = isAuthenticated && user && ['C1', 'C2'].includes(user.currentLevel);
+  const isFreePracticeUnlocked =
+    isAuthenticated && user && ["C1", "C2"].includes(user.currentLevel);
+
+  // Quản lý Drawer Cài đặt & Toggle Bàn phím ảo
+  const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
+  const [showKeyboard, setShowKeyboard] = useState<boolean>(true);
 
   if (authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-100 dark:bg-[#0f0f1a] text-slate-600 dark:text-slate-300">
+      <div className="min-h-screen flex items-center justify-center bg-slate-100 dark:bg-[#0c0d14] text-slate-600 dark:text-slate-300">
         <div className="flex flex-col items-center gap-3">
           <div className="w-8 h-8 border-4 border-violet-500/30 border-t-violet-500 rounded-full animate-spin" />
-          <span className="text-sm font-medium">Đang tải VocaType...</span>
+          <span className="text-sm font-medium">Đang nạp VocaType...</span>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <Header activeTab={activeTab} onTabChange={setActiveTab} />
+    <div className="min-h-screen flex flex-col relative overflow-x-hidden bg-slate-50 dark:bg-[#0c0d14]">
+      {/* Hiệu ứng Ambient Glow hậu cảnh */}
+      <div className="ambient-glow-bg" />
+
+      <Header
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        onOpenSettings={() => setIsSettingsOpen(true)}
+        isSettingsOpen={isSettingsOpen}
+      />
 
       {/* Hiển thị Onboarding cho tài khoản mới */}
       {needsOnboarding && (
@@ -220,94 +318,141 @@ function AppContent() {
         />
       )}
 
-      <main className="flex-1 max-w-[1400px] mx-auto w-full px-4 py-6">
-        <div className="flex gap-6 items-start">
+      {/* ── Khung nội dung chính căn giữa thanh lịch ── */}
+      <main className="flex-1 max-w-[1020px] mx-auto w-full px-4 sm:px-6 py-6 sm:py-8 flex flex-col justify-center relative z-10">
+        {activeTab === "study" ? (
+          <StudyArea
+            selectedLevel={selectedLevel}
+            levels={levels}
+          />
+        ) : !isFreePracticeUnlocked ? (
+          /* MÀN HÌNH KHÓA CHỨC NĂNG HỌC TẬP TỰ DO */
+          <div className="glass rounded-3xl p-10 text-center animate-fade-in max-w-lg mx-auto shadow-2xl">
+            <Lock
+              size={48}
+              className="text-slate-400 dark:text-slate-500 mx-auto mb-4"
+            />
+            <h3 className="text-xl font-bold text-slate-800 dark:text-slate-200 mb-2 flex items-center justify-center gap-2">
+              <Trophy className="text-yellow-500" size={20} />
+              Học tập tự do đang khóa
+            </h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mb-6 leading-relaxed">
+              Bạn cần hoàn thành toàn bộ 20 bài học của mỗi cấp độ{" "}
+              <strong className="text-violet-500 font-semibold">A1, A2, B1 và B2</strong> (tổng cộng 80 bài tập) trong
+              phần **Học tập** để mở khóa chế độ luyện gõ tự do này.
+            </p>
+            <div className="p-4 rounded-2xl bg-slate-100/80 dark:bg-white/5 border border-slate-200/80 dark:border-white/10 text-left">
+              <p className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-2">
+                Cách mở khóa:
+              </p>
+              <ul className="text-xs text-slate-500 dark:text-slate-400 space-y-1.5 list-disc pl-4 font-sans">
+                <li>Đăng nhập tài khoản Google.</li>
+                <li>Làm bài test trình độ để xuất phát ở cấp độ phù hợp.</li>
+                <li>
+                  Vào tab <strong>Học tập</strong> và hoàn thành lộ trình
+                  cho tới khi mở khóa được cấp độ <strong>C1</strong>.
+                </li>
+              </ul>
+            </div>
+          </div>
+        ) : isFinished ? (
+          <div className="animate-fade-in">
+            <Stats
+              stats={stats}
+              isFinished={isFinished}
+              onRestart={reset}
+            />
+          </div>
+        ) : (
+          <div className="flex flex-col gap-5 animate-fade-in">
+            {/* Stats bar & Stop Action */}
+            <div className="flex items-center justify-between gap-4">
+              <Stats
+                stats={stats}
+                isFinished={isFinished}
+                onRestart={reset}
+              />
+              {activeTab === "type" &&
+                !isFinished &&
+                typedText.length > 0 && (
+                  <button
+                    onClick={forceFinish}
+                    className="px-5 py-2.5 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-xl text-xs font-bold shadow-lg shadow-violet-500/25 active:scale-95 hover:brightness-110 transition-all shrink-0"
+                  >
+                    🛑 Dừng gõ & Xem điểm
+                  </button>
+                )}
+            </div>
 
-          {/* Main content */}
-          <div className="flex-1 min-w-0">
-            {activeTab === 'study' ? (
-              <StudyArea selectedLevel={selectedLevel} selectedDomain={selectedDomain} levels={levels} domains={domains} />
-            ) : !isFreePracticeUnlocked ? (
-              /* MÀN HÌNH KHÓA CHỨC NĂNG HỌC TẬP TỰ DO */
-              <div className="glass rounded-3xl p-10 text-center animate-fade-in max-w-lg mx-auto">
-                <Lock size={48} className="text-slate-400 dark:text-slate-500 mx-auto mb-4" />
-                <h3 className="text-xl font-bold text-slate-800 dark:text-slate-200 mb-2 flex items-center justify-center gap-2">
-                  <Trophy className="text-yellow-500" size={20} />
-                  Học tập tự do đang khóa
-                </h3>
-                <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
-                  Bạn cần hoàn thành toàn bộ 20 bài học của mỗi cấp độ <strong>A1, A2, B1 và B2</strong> (tổng cộng 80 bài tập) trong phần **Học tập** để mở khóa chế độ luyện gõ tự do này.
-                </p>
-                <div className="p-4 rounded-xl bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-left">
-                  <p className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-2">Cách mở khóa:</p>
-                  <ul className="text-xs text-slate-500 dark:text-slate-400 space-y-1.5 list-disc pl-4 font-sans">
-                    <li>Đăng nhập tài khoản Google.</li>
-                    <li>Làm bài test trình độ để xuất phát ở cấp độ phù hợp.</li>
-                    <li>Vào tab <strong>Học tập</strong> và hoàn thành lộ trình cho tới khi mở khóa được cấp độ <strong>C1</strong>.</li>
-                  </ul>
-                </div>
-              </div>
-            ) : isFinished ? (
-              <div className="animate-fade-in">
-                <Stats stats={stats} isFinished={isFinished} onRestart={reset} />
+            {/* Typing area trung tâm */}
+            {isLoadingWords ? (
+              <div className="glass rounded-3xl p-12 flex items-center justify-center gap-3 text-slate-500 dark:text-slate-400">
+                <div className="w-5 h-5 border-2 border-violet-500/40 border-t-violet-500 rounded-full animate-spin" />
+                <span className="text-sm font-medium">Đang nạp từ vựng...</span>
               </div>
             ) : (
-              <div className="flex flex-col gap-4 animate-fade-in">
-                {/* Stats bar */}
-                <div className="flex items-center justify-between gap-4">
-                  <Stats stats={stats} isFinished={isFinished} onRestart={reset} />
-                  {activeTab === 'type' && !isFinished && typedText.length > 0 && (
-                    <button
-                      onClick={forceFinish}
-                      className="px-5 py-2.5 bg-gradient-to-r from-violet-600 to-indigo-500 text-white rounded-xl text-xs font-bold shadow-md shadow-violet-500/20 active:scale-95 transition-all shrink-0"
-                    >
-                      🛑 Dừng gõ & Xem điểm
-                    </button>
-                  )}
-                </div>
+              <TypingArea
+                text={text}
+                typedText={typedText}
+                isFinished={isFinished}
+                inputRef={inputRef}
+                handleInputChange={handleInputChange}
+                wordsMetadata={practiceWordsMetadata}
+                onWordClick={handleWordClick}
+                fontSize={fontSize}
+                lineCount={lineCount}
+                showMeaning={showMeaning}
+                onFontSizeChange={handleFontSizeChange}
+                onLineCountChange={handleLineCountChange}
+              />
+            )}
 
-                {/* Typing area */}
-                {isLoadingWords ? (
-                  <div className="glass rounded-2xl p-8 flex items-center justify-center gap-3 text-slate-500 dark:text-slate-400">
-                    <div className="w-5 h-5 border-2 border-violet-500/40 border-t-violet-500 rounded-full animate-spin" />
-                    <span className="text-sm">Đang nạp từ vựng...</span>
-                  </div>
-                ) : (
-                  <TypingArea
-                    text={text} typedText={typedText} isFinished={isFinished}
-                    inputRef={inputRef} handleInputChange={handleInputChange}
-                    wordsMetadata={practiceWordsMetadata}
-                    onWordClick={handleWordClick}
-                  />
-                )}
+            {/* Bàn phím & Bàn tay có Toggle thu gọn */}
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center justify-end px-1">
+                <button
+                  onClick={() => setShowKeyboard(!showKeyboard)}
+                  className="text-[11px] font-medium text-slate-400 hover:text-violet-500 dark:text-slate-500 dark:hover:text-violet-400 transition-colors flex items-center gap-1.5"
+                >
+                  <span>{showKeyboard ? 'Ẩn bàn phím ảo' : 'Hiện bàn phím ảo'}</span>
+                </button>
+              </div>
 
-                {/* Keyboard & Hands */}
-                <div className="glass rounded-2xl p-4 flex flex-col gap-3">
+              {showKeyboard && (
+                <div className="glass rounded-3xl p-5 flex flex-col gap-3 transition-all duration-300 animate-fade-in border border-slate-200/80 dark:border-white/10 shadow-xl">
                   <Keyboard activeKeys={activeKeys} nextChar={nextChar} />
                   <Hands nextChar={nextChar} />
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
-
-          {/* Sidebar - Chỉ hiển thị khi được mở khoá học tập tự do và đang ở tab Luyện gõ */}
-          {activeTab === 'type' && isFreePracticeUnlocked && (
-            <Sidebar
-              activeTab={activeTab}
-              soundEnabled={soundEnabled} onSoundToggle={setSoundEnabled}
-              selectedLevel={selectedLevel} onLevelChange={setSelectedLevel}
-              selectedDomain={selectedDomain} onDomainChange={setSelectedDomain}
-              levels={levels} domains={domains} onReset={reset}
-              switchType={switchType} onSwitchTypeChange={handleSwitchTypeChange}
-              volume={volume} onVolumeChange={setVolume}
-              favoriteDomains={favoriteDomains}
-              onEditDomains={() => setIsEditModalOpen(true)}
-              ttsEnabled={ttsEnabled}
-              onTtsToggle={setTtsEnabled}
-            />
-          )}
-        </div>
+        )}
       </main>
+
+      {/* ── Slide-over Drawer Cài đặt ── */}
+      <Sidebar
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        activeTab={activeTab}
+        soundEnabled={soundEnabled}
+        onSoundToggle={setSoundEnabled}
+        selectedLevel={selectedLevel}
+        onLevelChange={setSelectedLevel}
+        levels={levels}
+        onReset={reset}
+        switchType={switchType}
+        onSwitchTypeChange={handleSwitchTypeChange}
+        volume={volume}
+        onVolumeChange={setVolume}
+        ttsEnabled={ttsEnabled}
+        onTtsToggle={setTtsEnabled}
+        fontSize={fontSize}
+        onFontSizeChange={handleFontSizeChange}
+        lineCount={lineCount}
+        onLineCountChange={handleLineCountChange}
+        showMeaning={showMeaning}
+        onShowMeaningToggle={handleShowMeaningToggle}
+      />
 
       {/* Footer */}
       <footer className="glass border-t border-slate-200 dark:border-white/10 mt-auto">
@@ -315,27 +460,24 @@ function AppContent() {
           <div className="flex flex-wrap gap-4">
             <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
               <Info size={13} className="text-blue-400" />
-              <span>Nhấn <strong className="text-violet-400">ESC</strong> để bắt đầu lại bài luyện nhanh.</span>
+              <span>
+                Nhấn <strong className="text-violet-400">ESC</strong> để bắt đầu
+                lại bài luyện nhanh.
+              </span>
             </div>
             <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
               <HelpCircle size={13} className="text-yellow-400" />
-              <span>Đặt ngón trỏ trái lên phím <strong>F</strong> và ngón trỏ phải lên phím <strong>J</strong>.</span>
+              <span>
+                Đặt ngón trỏ trái lên phím <strong>F</strong> và ngón trỏ phải
+                lên phím <strong>J</strong>.
+              </span>
             </div>
           </div>
           <p className="text-[11px] text-slate-400 dark:text-slate-500">
-            © 2026 VocaType · React + NestJS + PostgreSQL
+            © 2026 VocaType
           </p>
         </div>
       </footer>
-
-      {/* Modal Chỉnh sửa Lĩnh vực yêu thích (Render bên ngoài Sidebar) */}
-      <EditDomainsModal
-        isOpen={isEditModalOpen}
-        onClose={() => setIsEditModalOpen(false)}
-        domains={domains}
-        favoriteDomains={favoriteDomains}
-        onSave={handleSaveDomains}
-      />
 
       {/* Modal Tra cứu chi tiết từ vựng khi click */}
       <WordDetailModal
