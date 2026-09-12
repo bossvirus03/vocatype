@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { apiUrl } from '../utils/api';
 
 export interface User {
   id: number;
@@ -52,7 +53,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return;
     }
     try {
-      const res = await fetch('http://localhost:5001/api/users/profile', {
+      const res = await fetch(apiUrl('/users/profile'), {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -78,7 +79,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const loginWithGoogleToken = async (googleToken: string) => {
     setIsLoading(true);
     try {
-      const res = await fetch('http://localhost:5001/api/auth/google', {
+      const res = await fetch(apiUrl('/auth/google'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token: googleToken }),
@@ -101,7 +102,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const updateFavoriteDomains = async (domains: string[]) => {
     if (!token) return;
     try {
-      const res = await fetch('http://localhost:5001/api/users/favorite-domains', {
+      const res = await fetch(apiUrl('/users/favorite-domains'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -121,7 +122,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const savePlacementTest = async (correctRatio: number) => {
     if (!token) return;
     try {
-      const res = await fetch('http://localhost:5001/api/users/placement-test', {
+      const res = await fetch(apiUrl('/users/placement-test'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -141,7 +142,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const saveLessonProgress = async (level: string, lessonNo: number, wpm: number, accuracy: number) => {
     if (!token) return;
     try {
-      const res = await fetch('http://localhost:5001/api/users/progress/lesson', {
+      const res = await fetch(apiUrl('/users/progress/lesson'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
