@@ -1,3 +1,5 @@
+import { apiUrl } from './api';
+
 // Trình tổng hợp âm thanh bằng Web Audio API để giả lập tiếng click bàn phím cơ và âm báo lỗi
 // Hỗ trợ nhiều loại Mechanical Switches (Blue, Brown, Red) và tuỳ chỉnh Volume
 
@@ -33,7 +35,7 @@ class AudioManager {
     const cleanWord = word.replace(/[^a-zA-Z'-]/g, '').toLowerCase().trim();
     if (!cleanWord) return;
 
-    const targetUrl = audioUrl || `http://localhost:5001/api/words/audio/${encodeURIComponent(cleanWord)}`;
+    const targetUrl = audioUrl || apiUrl(`/words/audio/${encodeURIComponent(cleanWord)}`);
 
     try {
       const sound = new Audio(targetUrl);

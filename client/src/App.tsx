@@ -18,6 +18,7 @@ import { Info, HelpCircle, Lock, Trophy } from "lucide-react";
 import { audio } from "./utils/audio";
 import type { SwitchType } from "./utils/audio";
 import { WordDetailModal } from "./components/WordDetailModal";
+import { apiUrl } from "./utils/api";
 
 // Đọc Google Client ID từ biến môi trường của Vite (.env)
 const GOOGLE_CLIENT_ID =
@@ -124,7 +125,7 @@ function AppContent() {
     lessons.find((l) => l.id === currentLessonId) || lessons[0];
 
   useEffect(() => {
-    fetch("http://localhost:5001/api/words/levels")
+    fetch(apiUrl("/words/levels"))
       .then((r) => (r.ok ? r.json() : []))
       .then((data) => (Array.isArray(data) ? setLevels(data) : setLevels([])))
       .catch(() => setLevels([]));
@@ -145,7 +146,7 @@ function AppContent() {
       if (level && level !== "ALL") params.append("level", level);
       params.append("count", count.toString());
 
-      fetch(`http://localhost:5001/api/words/random?${params.toString()}`)
+      fetch(`${apiUrl("/words/random")}?${params.toString()}`)
         .then((res) => {
           if (!res.ok) throw new Error("Thất bại");
           return res.json();
@@ -184,7 +185,7 @@ function AppContent() {
       if (selectedLevel && selectedLevel !== "ALL") params.append("level", selectedLevel);
       params.append("count", "30");
 
-      const res = await fetch(`http://localhost:5001/api/words/random?${params.toString()}`);
+      const res = await fetch(`${apiUrl("/words/random")}?${params.toString()}`);
       if (!res.ok) throw new Error("Lỗi tải từ mới");
       const data: any[] = await res.json();
       const newWords = data.map((item) => item.word);

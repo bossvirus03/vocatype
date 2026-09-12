@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { HelpCircle, CheckCircle, RotateCcw, Lock, Award, BookOpen, ArrowLeft, Brain } from 'lucide-react';
 import { useTypingEngine } from '../hooks/useTypingEngine';
 import { useAuth } from '../contexts/AuthContext';
+import { apiUrl } from '../utils/api';
 import TypingArea from './TypingArea';
 import Keyboard from './Keyboard';
 import Hands from './Hands';
@@ -46,7 +47,7 @@ export const StudyArea: React.FC<StudyAreaProps> = ({
   const fetchProgress = async () => {
     if (!token) return;
     try {
-      const res = await fetch('http://localhost:5001/api/users/progress', {
+      const res = await fetch(apiUrl('/users/progress'), {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) {
@@ -81,7 +82,7 @@ export const StudyArea: React.FC<StudyAreaProps> = ({
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    fetch(`http://localhost:5001/api/words/lesson?level=${activeViewLevel}&lessonNo=${selectedLessonNo}`, {
+    fetch(`${apiUrl('/words/lesson')}?level=${activeViewLevel}&lessonNo=${selectedLessonNo}`, {
       headers
     })
       .then(res => res.json())
